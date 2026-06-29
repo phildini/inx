@@ -493,6 +493,7 @@ bool FontManager::loadFontFromSD(int fontId, GfxRenderer& renderer) {
       Serial.printf("[FontManager] Skipping %s (failed to load): %s\n", label, path.c_str());
       return nullptr;
     }
+    stream->setGlyphBitmapCacheEnabled(true);
     return stream;
   };
 

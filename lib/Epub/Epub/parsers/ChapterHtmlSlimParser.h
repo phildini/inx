@@ -113,12 +113,6 @@ class ChapterHtmlSlimParser {
   int16_t currentBlockContentStartY = 0;
   /** Top border rule of the current block, deferred so its width can be set to the text width after layout. */
   std::shared_ptr<PageCssBorderLine> pendingTopBorderElem_;
-  struct PendingFallbackHorizontalRule {
-    bool active = false;
-    std::string classAttr;
-    int spacingTop = 0;
-    int spacingBottom = 0;
-  } pendingFallbackHr_;
 
   /** When true, Expat callbacks only walk the tree for depth/skip and prefetch images (no text layout). */
   bool imagePrefetchPassOnly_ = false;
@@ -185,7 +179,6 @@ class ChapterHtmlSlimParser {
   void addCenteredDivider(const char* text);
   void addHorizontalRule(const std::string& tagLower = "hr", const std::string& classAttr = "",
                          const std::string& idAttr = "", const std::string& styleAttr = "");
-  void emitPendingFallbackHorizontalRule();
   /** Emits a horizontal border rule (full content width placeholder) and returns it so its width can be
    *  narrowed to the text content width once the block is laid out. */
   std::shared_ptr<PageCssBorderLine> addCssBorderLine(int thicknessPx, uint8_t style = 0);

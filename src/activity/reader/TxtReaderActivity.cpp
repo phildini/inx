@@ -475,7 +475,7 @@ void TxtReaderActivity::renderPage() {
   }
 
   
-  if (SETTINGS.textAntiAliasing) {
+  if (SETTINGS.textAntiAliasing && renderer.text.supportsAntiAliasing(cachedFontId)) {
     
     renderer.storeBwBuffer();
 

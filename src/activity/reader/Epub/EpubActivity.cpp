@@ -1683,6 +1683,7 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
                                   const int orientedMarginLeft) {
   if (!page) return;
   const int fontId = bookSettings.getReaderFontId();
+  FontManager::ensureReaderLayoutFonts(fontId, renderer);
   const int headerFontId = FontManager::getNextFont(fontId);
   const bool pageHasImages = page->hasImages();
 
@@ -2085,7 +2086,7 @@ void EpubActivity::applyBookSettings() {
   setupOrientation();
 
   ViewportInfo info = calculateViewport();
-  FontManager::ensureFontReady(info.fontId, renderer);
+  FontManager::ensureReaderLayoutFonts(info.fontId, renderer);
 
   int totalSpineItems = epub->getSpineItemsCount();
   if (totalSpineItems <= 0) {

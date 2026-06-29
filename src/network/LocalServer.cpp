@@ -868,6 +868,7 @@ static bool flushUploadBuffer() {
       return false;
     }
     uploadBufferPos = 0;
+    yield();
   }
   return true;
 }

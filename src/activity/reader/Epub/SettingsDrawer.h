@@ -118,7 +118,7 @@ private:
 
         Separator,           ///< Generic separator for Font, Layout, Controls groups
         StatusBarSeparator,  ///< Special separator for Status Bar group
-        PresetPicker,        ///< Per-book: pick a saved preset to snapshot-apply (Confirm applies)
+        PresetPicker,        ///< Per-book: pick and immediately apply a saved preset
         
         
         FontFamily,          ///< Font style selection
@@ -172,6 +172,7 @@ private:
     bool embedded_ = false;                       ///< Render within a fixed sub-region (preset editor)
     std::function<void()> onEmbeddedInvalidate_;  ///< Host push callback used instead of displayBuffer when embedded
     int presetPickIndex_ = 0;                     ///< Highlighted preset for the per-book PresetPicker row
+    bool presetAppliedInDrawer_ = false;          ///< True after a preset has been applied during this drawer session
 
     bool visible = false;                      ///< Drawer visibility state
     bool dismissed = false;                    ///< Drawer dismissed state

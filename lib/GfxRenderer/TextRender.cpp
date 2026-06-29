@@ -223,7 +223,16 @@ bool TextRender::supportsAntiAliasing(const int fontId) const {
 
   const EpdFontFamily& family = familyIt->second;
   const EpdFontData* regular = family.getData(EpdFontFamily::REGULAR);
-  return regular && regular->is2Bit;
+  if (!regular || !regular->is2Bit) {
+    return false;
+  }
+
+  const auto streamIt = gfx.streamingFonts.find(regular);
+  if (streamIt != gfx.streamingFonts.end()) {
+    return streamIt->second && streamIt->second->hasAntiAliasData();
+  }
+
+  return true;
 }
 
 
