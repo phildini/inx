@@ -104,7 +104,12 @@ void buildPageWordIndex(const Page& page, GfxRenderer& renderer, const int bodyF
             h.text = dct;
           }
           h.screenX = dc->xPos + marginLeft;
-          h.screenY = dc->yPos + marginTop + PageDropCap::VERTICAL_ADJUSTMENT;
+          if (dc->isInlineFirstLine()) {
+            h.screenY = dc->yPos + marginTop + renderer.text.getFontAscenderSize(bodyFontId) -
+                        renderer.text.getFontAscenderSize(df);
+          } else {
+            h.screenY = dc->yPos + marginTop + PageDropCap::VERTICAL_ADJUSTMENT;
+          }
           h.screenW = std::max(1, renderer.text.getWidth(df, dct.c_str(), EpdFontFamily::BOLD));
         }
         h.screenH = renderer.text.getLineHeight(df);

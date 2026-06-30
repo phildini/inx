@@ -15,7 +15,7 @@
 #include <FsHelpers.h> 
 
 namespace {
-constexpr uint8_t SECTION_FILE_VERSION = 57;  // 57: force reader Indent as a default first-line indent
+constexpr uint8_t SECTION_FILE_VERSION = 58;  // 58: persist inline vs floated dropcap placement
 constexpr uint32_t HEADER_SIZE = sizeof(uint8_t) + sizeof(int) + sizeof(float) + sizeof(float) + sizeof(bool) +
                                  sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint16_t) + sizeof(bool) + sizeof(bool) +
                                  sizeof(bool) + sizeof(uint16_t) + sizeof(uint32_t);

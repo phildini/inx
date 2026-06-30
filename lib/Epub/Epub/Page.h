@@ -139,6 +139,7 @@ class PageSmallCaps final : public PageElement {
 class PageDropCap final : public PageElement {
   std::string text;
   int dropCapFontId;
+  bool inlineFirstLine;
 
  public:
   /**
@@ -147,12 +148,16 @@ class PageDropCap final : public PageElement {
    * @param yPos Y coordinate
    * @param fontId The specific large font ID to use
    */
-  PageDropCap(std::string text, const int16_t xPos, const int16_t yPos, int fontId)
-      : PageElement(xPos, yPos), text(std::move(text)), dropCapFontId(fontId) {}
+  PageDropCap(std::string text, const int16_t xPos, const int16_t yPos, int fontId, bool inlineFirstLine = false)
+      : PageElement(xPos, yPos),
+        text(std::move(text)),
+        dropCapFontId(fontId),
+        inlineFirstLine(inlineFirstLine) {}
 
   const std::string& getDropCapText() const { return text; }
   int getDropCapFontId() const { return dropCapFontId; }
-  static constexpr int16_t VERTICAL_ADJUSTMENT = - 7;
+  bool isInlineFirstLine() const { return inlineFirstLine; }
+  static constexpr int16_t VERTICAL_ADJUSTMENT = 0;
 
   PageElementTag getTag() const override { return TAG_PageDropCap; }
   void render(GfxRenderer& renderer, int fontId, int xOffset, int yOffset,

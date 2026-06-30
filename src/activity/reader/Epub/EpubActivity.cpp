@@ -1790,7 +1790,8 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
 
   const bool bwStored = (skipImagesInPageRender || (needsTextAntiAliasPass && !highQuality)) && renderer.storeBwBuffer();
   const bool displayWithQualityPass = highQuality && bwStored;
-  if (!displayWithQualityPass) {
+  const bool displayImagePlaceholder = displayWithQualityPass;
+  auto displayPageBuffer = [this]() {
     if (pagesUntilFullRefresh <= 1) {
       renderer.displayBuffer(HalDisplay::HALF_REFRESH);
       pagesUntilFullRefresh = bookSettings.refreshFrequency;
@@ -1798,6 +1799,13 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
       renderer.displayBuffer();
       pagesUntilFullRefresh--;
     }
+  };
+
+  if (displayImagePlaceholder) {
+    page->fillImageRects(renderer, orientedMarginLeft, orientedMarginTop, true, /*onlyGrayscale=*/true);
+    displayPageBuffer();
+  } else if (!displayWithQualityPass) {
+    displayPageBuffer();
   } else if (pagesUntilFullRefresh <= 1) {
     pagesUntilFullRefresh = bookSettings.refreshFrequency;
   } else {

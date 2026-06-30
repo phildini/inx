@@ -846,13 +846,14 @@ void ChapterHtmlSlimParser::flushPartWordBuffer() {
     if (!currentPage) currentPage.reset(new Page());
 
     const std::string dropCapText = uppercaseSingleLetterDropCap(partWordBuffer, partWordBufferIndex);
-    auto dropCapElem = std::make_shared<PageDropCap>(dropCapText, 0, currentPageNextY, maxFontId);
+    const bool inlineFirstLine = dropCapLineCount <= 1;
+    auto dropCapElem = std::make_shared<PageDropCap>(dropCapText, 0, currentPageNextY, maxFontId, inlineFirstLine);
     currentPage->elements.push_back(dropCapElem);
 
     int dropCapWidth = renderer.text.getWidth(maxFontId, dropCapText.c_str(), EpdFontFamily::BOLD) + 3;
 
     if (currentTextBlock) {
-      currentTextBlock->setLeftIndent(dropCapWidth, dropCapLineCount);
+      currentTextBlock->setLeftIndent(dropCapWidth, inlineFirstLine ? 1 : dropCapLineCount);
     }
 
     partWordBufferIndex = 0;

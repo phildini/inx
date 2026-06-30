@@ -20,6 +20,23 @@
 
 namespace {
 
+void drawImagePlaceholderDots(GfxRenderer& renderer, const int x, const int y, const int width, const int height) {
+  if (width <= 20 || height <= 20) {
+    return;
+  }
+
+  const int dotSize = std::max(4, std::min(12, std::min(width, height) / 12));
+  const int dotGap = dotSize * 2;
+  const int totalWidth = dotSize * 3 + dotGap * 2;
+  const int dotY = y + (height - dotSize) / 2;
+  int dotX = x + (width - totalWidth) / 2;
+
+  for (int i = 0; i < 3; ++i) {
+    renderer.rectangle.fill(dotX, dotY, dotSize, dotSize, true, true);
+    dotX += dotSize + dotGap;
+  }
+}
+
 }
 
 /**
@@ -141,9 +158,15 @@ void PageDropCap::render(GfxRenderer& renderer, const int fontId, const int xOff
   // caps (ascender - glyph.top). Align the drop cap's cap-top with the body cap-top by that inset difference.
   const uint8_t* p = reinterpret_cast<const uint8_t*>(text.c_str());
   const uint32_t dropCp = utf8NextCodepoint(&p);
-  const int dropInset = renderer.text.getGlyphTopInset(dropCapFontId, dropCp, EpdFontFamily::BOLD);
-  const int bodyInset = renderer.text.getGlyphTopInset(fontId, 'H', EpdFontFamily::REGULAR);
-  const int alignY = yPos + yOffset + (bodyInset - dropInset) + PageDropCap::VERTICAL_ADJUSTMENT;
+  int alignY = yPos + yOffset;
+  if (inlineFirstLine) {
+    const int bodyBaseline = yPos + yOffset + renderer.text.getFontAscenderSize(fontId);
+    alignY = bodyBaseline - renderer.text.getFontAscenderSize(dropCapFontId);
+  } else {
+    const int dropInset = renderer.text.getGlyphTopInset(dropCapFontId, dropCp, EpdFontFamily::BOLD);
+    const int bodyInset = renderer.text.getGlyphTopInset(fontId, 'H', EpdFontFamily::REGULAR);
+    alignY += (bodyInset - dropInset) + PageDropCap::VERTICAL_ADJUSTMENT;
+  }
   renderer.text.render(dropCapFontId, xPos + xOffset, alignY, text.c_str(), EpdFontFamily::BOLD);
 }
 
@@ -157,6 +180,7 @@ bool PageDropCap::serialize(FsFile& file) {
   serialization::writePod(file, xPos);
   serialization::writePod(file, yPos);
   serialization::writePod(file, dropCapFontId);
+  serialization::writePod(file, inlineFirstLine);
   serialization::writeString(file, text);
   return true;
 }
@@ -174,8 +198,10 @@ std::unique_ptr<PageDropCap> PageDropCap::deserialize(FsFile& file) {
   serialization::readPod(file, x);
   serialization::readPod(file, y);
   serialization::readPod(file, dcFontId);
+  bool inlineFirstLine = false;
+  serialization::readPod(file, inlineFirstLine);
   serialization::readString(file, text);
-  return std::unique_ptr<PageDropCap>(new PageDropCap(text, x, y, dcFontId));
+  return std::unique_ptr<PageDropCap>(new PageDropCap(text, x, y, dcFontId, inlineFirstLine));
 }
 
 /**
@@ -493,7 +519,16 @@ void Page::fillImageRects(GfxRenderer& renderer, const int xOffset, const int yO
     }
     const int rx = std::max(0, (screenW - img.getWidth()) / 2);
     const int ry = std::max(0, img.yPos + yOffset);
-    renderer.rectangle.fill(rx, ry, img.getWidth(), img.getHeight(), value);
+    if (value) {
+      renderer.rectangle.fill(rx, ry, img.getWidth(), img.getHeight(), false);
+      renderer.rectangle.render(rx, ry, img.getWidth(), img.getHeight(), true);
+      if (img.getWidth() > 8 && img.getHeight() > 8) {
+        renderer.rectangle.render(rx + 3, ry + 3, img.getWidth() - 6, img.getHeight() - 6, true);
+      }
+      drawImagePlaceholderDots(renderer, rx, ry, img.getWidth(), img.getHeight());
+    } else {
+      renderer.rectangle.fill(rx, ry, img.getWidth(), img.getHeight(), false);
+    }
   }
 }
 
