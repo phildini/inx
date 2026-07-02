@@ -37,7 +37,9 @@
 #include "state/SystemSetting.h"
 #include "KOReaderCredentialStore.h"
 #include "state/NetworkCredential.h"
+#ifndef INX_SIMULATOR_WEB_ONLY
 #include "state/OpdsServerStore.h"
+#endif
 
 namespace {
 
@@ -1836,6 +1838,7 @@ void LocalServer::handleFontsRescan() const {
 #endif
 }
 
+#ifndef INX_SIMULATOR_WEB_ONLY
 void LocalServer::handleOpdsGet() const {
     JsonDocument doc;
     const auto& servers = OPDS_STORE.getAllServers();
@@ -1888,3 +1891,4 @@ void LocalServer::handleOpdsDelete() const {
         server->send(404, "text/plain", "Not found");
     }
 }
+#endif
