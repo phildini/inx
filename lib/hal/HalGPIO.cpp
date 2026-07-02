@@ -262,14 +262,22 @@ void HalGPIO::startDeepSleep() {
 
 int HalGPIO::getBatteryPercentage() const {
   if (deviceIsX3()) {
+    const unsigned long now = millis();
+    if (batteryLastPollMs != 0 && (now - batteryLastPollMs) < BATTERY_POLL_MS) {
+      return batteryCachedPercent;
+    }
+
     uint16_t soc = 0;
     X3GPIO::beginX3I2C();
     const bool ok = X3GPIO::readBQ27220StateOfCharge(&soc);
     X3GPIO::endX3I2C();
     if (ok && soc <= 100) {
-      return static_cast<int>(soc);
+      batteryCachedPercent = static_cast<int>(soc);
+      batteryLastPollMs = now;
+      return batteryCachedPercent;
     }
-    return 0;
+    batteryLastPollMs = now;
+    return batteryCachedPercent;
   }
   static const BatteryMonitor battery = BatteryMonitor(BAT_GPIO0);
   return battery.readPercentage();

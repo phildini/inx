@@ -60,8 +60,12 @@ class HalGPIO {
 
  private:
   DeviceType deviceType = DeviceType::X4;
+  mutable int batteryCachedPercent = 0;
+  mutable unsigned long batteryLastPollMs = 0;
 
  public:
+  static constexpr unsigned long BATTERY_POLL_MS = 1500;
+
   HalGPIO() = default;
 
   bool deviceIsX3() const { return deviceType == DeviceType::X3; }

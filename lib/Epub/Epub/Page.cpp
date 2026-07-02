@@ -618,7 +618,6 @@ void Page::renderImages(GfxRenderer& renderer, const int fontId, const int xOffs
   }
 }
 
-
 /**
  * Serializes a Page to a file.
  *

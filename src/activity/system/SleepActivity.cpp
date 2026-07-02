@@ -62,6 +62,24 @@ ImageRenderMode sleepImageRenderMode() {
   return sleepTwoBitEnabled() ? ImageRenderMode::TwoBit : ImageRenderMode::OneBit;
 }
 
+ImageRender::Options sleepImageOptions(const bool allowQuality = true) {
+  ImageRender::Options options;
+  options.cropToFill = SETTINGS.sleepScreenCoverMode == SystemSetting::SLEEP_SCREEN_COVER_MODE::FIT;
+  options.mode = sleepImageRenderMode();
+  options.useDisplayCache = true;
+  options.quality = allowQuality && sleepImageQualityEnabled();
+  options.fastQuality = false;
+  return options;
+}
+
+void prewarmSleepImage(GfxRenderer& renderer, const std::string& imagePath, const bool allowQuality = true) {
+  if (!isSleepImagePathJpeg(imagePath)) {
+    return;
+  }
+  ImageRender::create(renderer, imagePath)
+      .prewarm(0, 0, renderer.getScreenWidth(), renderer.getScreenHeight(), sleepImageOptions(allowQuality));
+}
+
 void runSleepImageTwoBitPasses(GfxRenderer& renderer, const std::string& imagePath,
                                const ImageRender::Options& baseOptions, const bool allowQuality = true) {
   if (!sleepTwoBitEnabled()) {
@@ -328,10 +346,8 @@ void SleepActivity::renderCustomSleepScreen() const {
     recordSleepImageUsed();
 
     if (isSleepImagePathJpeg(imagePath)) {
-      ImageRender::Options options;
-      options.cropToFill = SETTINGS.sleepScreenCoverMode == SystemSetting::SLEEP_SCREEN_COVER_MODE::FIT;
-      options.mode = sleepImageRenderMode();
-      options.useDisplayCache = true;
+      prewarmSleepImage(renderer, imagePath);
+      ImageRender::Options options = sleepImageOptions();
       if (ImageRender::create(renderer, imagePath)
               .render(0, 0, renderer.getScreenWidth(), renderer.getScreenHeight(), options)) {
         if (!sleepImageQualityEnabled()) {
@@ -373,10 +389,11 @@ void SleepActivity::renderTransparentSleepScreen() const {
     // screen, so remove the background (clear to white) and render the image opaque instead.
     const bool removeBackground = sleepImageQualityEnabled();
     if (isSleepImagePathJpeg(imagePath)) {
-      ImageRender::Options options;
-      options.cropToFill = SETTINGS.sleepScreenCoverMode == SystemSetting::SLEEP_SCREEN_COVER_MODE::FIT;
-      options.mode = sleepImageRenderMode();
-      options.useDisplayCache = false;
+      if (removeBackground) {
+        prewarmSleepImage(renderer, imagePath, /*allowQuality=*/false);
+      }
+      ImageRender::Options options = sleepImageOptions(/*allowQuality=*/false);
+      options.useDisplayCache = removeBackground;
       if (removeBackground) {
         renderer.clearScreen();
       }
@@ -420,10 +437,8 @@ void SleepActivity::renderCoverSleepScreen() const {
 
   if (!coverPath.empty() && isSleepImagePathJpeg(coverPath)) {
     renderer.clearScreen();
-    ImageRender::Options options;
-    options.cropToFill = SETTINGS.sleepScreenCoverMode == SystemSetting::SLEEP_SCREEN_COVER_MODE::FIT;
-    options.mode = sleepImageRenderMode();
-    options.useDisplayCache = true;
+    prewarmSleepImage(renderer, coverPath);
+    ImageRender::Options options = sleepImageOptions();
     if (ImageRender::create(renderer, coverPath)
             .render(0, 0, renderer.getScreenWidth(), renderer.getScreenHeight(), options)) {
       if (SETTINGS.sleepScreenCoverFilter == SystemSetting::SLEEP_SCREEN_COVER_FILTER::INVERTED_BLACK_AND_WHITE) {
