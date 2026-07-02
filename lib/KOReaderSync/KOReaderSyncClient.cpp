@@ -112,6 +112,8 @@ KOReaderSyncClient::Error KOReaderSyncClient::authenticate() {
     return OK;
   } else if (httpCode == 401) {
     return AUTH_FAILED;
+  } else if (httpCode == 404) {
+    return NOT_FOUND;
   } else if (httpCode < 0) {
     return NETWORK_ERROR;
   }
@@ -192,6 +194,8 @@ KOReaderSyncClient::Error KOReaderSyncClient::updateProgress(const KOReaderProgr
     return OK;
   } else if (httpCode == 401) {
     return AUTH_FAILED;
+  } else if (httpCode == 404) {
+    return NOT_FOUND;
   } else if (httpCode < 0) {
     return NETWORK_ERROR;
   }
@@ -213,7 +217,7 @@ const char* KOReaderSyncClient::errorString(Error error) {
     case JSON_ERROR:
       return "JSON parse error";
     case NOT_FOUND:
-      return "No progress found";
+      return "No progress found (first time reading this book?)";
     default:
       return "Unknown error";
   }
