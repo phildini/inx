@@ -36,7 +36,6 @@ const SettingInfo systemPageSettings[] = {
                       GroupType::DEVICE_DISPLAY),
     SettingInfo::Enum("Library Mode", &SystemSetting::libraryMode, {"List","Grid"}, GroupType::DEVICE_DISPLAY),
     SettingInfo::Value("Recent books shown", &SystemSetting::recentVisibleCount, {1, 8, 1}, GroupType::DEVICE_DISPLAY),
-    SettingInfo::Toggle("Fix sunlight fade", &SystemSetting::fixSunlightFade, GroupType::DEVICE_DISPLAY),
 
     SettingInfo::Separator("Clock", GroupType::CLOCK),
     SettingInfo::Action("Face", GroupType::CLOCK),

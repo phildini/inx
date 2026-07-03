@@ -227,9 +227,6 @@ void setup() {
   }
 
   SETTINGS.loadFromFile();
-#ifndef SIMULATOR
-  display.setSunlightFadeFixEnabled(SETTINGS.fixSunlightFade != 0);
-#endif
 
   switch (gpio.getWakeupReason()) {
     case HalGPIO::WakeupReason::PowerButton:
