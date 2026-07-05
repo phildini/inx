@@ -52,6 +52,7 @@ unsigned long t2 = 0;
 
 void verifyPowerButtonDuration();
 void waitForPowerRelease();
+void normalizeUnavailableClockSettings();
 void enterDeepSleep();
 void onGoToReader(const std::string& path);
 void onSelectBook(const std::string& path);
@@ -195,7 +196,27 @@ void waitForPowerRelease() {
   }
 }
 
+void normalizeUnavailableClockSettings() {
+  if (gpio.deviceIsX3()) {
+    return;
+  }
+
+  bool changed = false;
+  if (SETTINGS.sleepScreen == SystemSetting::DATETIME) {
+    SETTINGS.sleepScreen = SystemSetting::LIGHT;
+    changed = true;
+  }
+  if (SETTINGS.sleepClockRefreshInterval != SystemSetting::CLOCK_REFRESH_OFF) {
+    SETTINGS.sleepClockRefreshInterval = SystemSetting::CLOCK_REFRESH_OFF;
+    changed = true;
+  }
+  if (changed) {
+    SETTINGS.saveToFile();
+  }
+}
+
 void enterDeepSleep() {
+  normalizeUnavailableClockSettings();
   switchTo<SleepActivity>(render, input);
   display.deepSleep();
   gpio.startDeepSleep();
@@ -227,6 +248,7 @@ void setup() {
   }
 
   SETTINGS.loadFromFile();
+  normalizeUnavailableClockSettings();
 
   switch (gpio.getWakeupReason()) {
     case HalGPIO::WakeupReason::PowerButton:

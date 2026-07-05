@@ -41,7 +41,7 @@ void readAndValidate(FsFile& file, uint8_t& member, const uint8_t maxValue) {
 
 namespace {
 constexpr uint8_t SETTINGS_FILE_VERSION = 27;
-constexpr uint8_t SETTINGS_COUNT = 63;
+constexpr uint8_t SETTINGS_COUNT = 65;
 /** Last field index in v9 (1-based count of persisted pods through displayImageDither). */
 constexpr uint8_t SETTINGS_COUNT_V9 = 40;
 constexpr uint8_t LEGACY_IMAGE_PRESENTATION_COUNT = 4;
@@ -112,6 +112,7 @@ bool SystemSetting::saveToFile() const {
     if (mut->bionicReadingEnabled > 1) mut->bionicReadingEnabled = 0;
     if (mut->sleepClockStyle >= SLEEP_CLOCK_STYLE_COUNT) mut->sleepClockStyle = CLOCK_CENTERED_DATE;
     if (mut->sleepClockTimeFormat >= CLOCK_TIME_FORMAT_COUNT) mut->sleepClockTimeFormat = CLOCK_24_HOUR;
+    if (mut->sleepClockRefreshInterval >= CLOCK_REFRESH_INTERVAL_COUNT) mut->sleepClockRefreshInterval = CLOCK_REFRESH_OFF;
     if (mut->sleepImageQuality >= SLEEP_IMAGE_QUALITY_COUNT) mut->sleepImageQuality = SLEEP_IMAGE_LOW;
     if (mut->xtcImageQuality >= READER_IMAGE_QUALITY_COUNT) mut->xtcImageQuality = READER_IMAGE_LOW;
     if (mut->xtcShortPwrBtn >= XTC_SHORT_PWRBTN_COUNT) mut->xtcShortPwrBtn = XTC_POWER_NEXT;
@@ -185,6 +186,7 @@ bool SystemSetting::saveToFile() const {
   serialization::writePod(outputFile, xtcShortPwrBtn);
   serialization::writePod(outputFile, xtcPageAutoTurnSeconds);
   serialization::writePod(outputFile, xtcRefreshFrequency);
+  serialization::writePod(outputFile, sleepClockRefreshInterval);
 
   outputFile.close();
 
@@ -595,6 +597,10 @@ bool SystemSetting::loadFromFile() {
       }
       ++settingsRead;
     }
+    if (settingsRead < fileSettingsCount) {
+      readAndValidate(inputFile, sleepClockRefreshInterval, CLOCK_REFRESH_INTERVAL_COUNT);
+      ++settingsRead;
+    }
 
   } while (false);
 
@@ -617,6 +623,9 @@ bool SystemSetting::loadFromFile() {
   if (settingsRead < 63) {
     xtcRefreshFrequency = getRefreshFrequency();
   }
+  if (settingsRead < 65) {
+    sleepClockRefreshInterval = CLOCK_REFRESH_OFF;
+  }
 
   if (recentVisibleCount < 1 || recentVisibleCount > 8) {
     recentVisibleCount = 8;
@@ -632,6 +641,9 @@ bool SystemSetting::loadFromFile() {
   }
   if (sleepClockTimeFormat >= CLOCK_TIME_FORMAT_COUNT) {
     sleepClockTimeFormat = CLOCK_24_HOUR;
+  }
+  if (sleepClockRefreshInterval >= CLOCK_REFRESH_INTERVAL_COUNT) {
+    sleepClockRefreshInterval = CLOCK_REFRESH_OFF;
   }
   if (sleepImageQuality >= SLEEP_IMAGE_QUALITY_COUNT) {
     sleepImageQuality = SLEEP_IMAGE_LOW;
