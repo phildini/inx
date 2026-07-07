@@ -688,40 +688,17 @@ void ChapterHtmlSlimParser::processImageElement(const char** atts) {
       imgWidth = (actualW * imgHeight) / std::max(1, actualH);
     }
 
-    if (widthIsPercentage || heightIsPercentage) {
-      if (widthIsPercentage && heightIsPercentage) {
-        if (imgWidth == 0 && imgHeight == 0) {
-          imgWidth = actualW;
-          imgHeight = actualH;
-        } else if (imgWidth == 0 && imgHeight > 0) {
-          imgWidth = (actualW * imgHeight) / actualH;
-        } else if (imgHeight == 0 && imgWidth > 0) {
-          imgHeight = (actualH * imgWidth) / actualW;
-        }
-      } else if (widthIsPercentage && imgWidth == 0) {
-        if (imgHeight > 0) {
-          imgWidth = (actualW * imgHeight) / actualH;
-        } else {
-          imgWidth = actualW;
-          imgHeight = actualH;
-        }
-      } else if (heightIsPercentage && imgHeight == 0) {
-        if (imgWidth > 0) {
-          imgHeight = (actualH * imgWidth) / actualW;
-        } else {
-          imgWidth = actualW;
-          imgHeight = actualH;
-        }
-      }
-    } else {
-      if (imgWidth > 0 && imgHeight == 0) {
-        imgHeight = (actualH * imgWidth) / std::max(1, actualW);
-      } else if (imgHeight > 0 && imgWidth == 0) {
-        imgWidth = (actualW * imgHeight) / std::max(1, actualH);
-      } else if (imgWidth == 0 && imgHeight == 0) {
-        imgWidth = actualW;
-        imgHeight = actualH;
-      }
+    // getWidth()/getHeight() above already resolve a percentage (e.g. "width:100%") to a concrete pixel
+    // value using viewportWidth/viewportHeight, so imgWidth/imgHeight reaching here are either a real,
+    // final value or genuinely unset (0) - regardless of whether a percentage was involved. Fill in
+    // whichever dimension is still 0 from the actual image's aspect ratio.
+    if (imgWidth > 0 && imgHeight == 0) {
+      imgHeight = (actualH * imgWidth) / std::max(1, actualW);
+    } else if (imgHeight > 0 && imgWidth == 0) {
+      imgWidth = (actualW * imgHeight) / std::max(1, actualH);
+    } else if (imgWidth == 0 && imgHeight == 0) {
+      imgWidth = actualW;
+      imgHeight = actualH;
     }
 
     if (cssMaxW > 0 && imgWidth > cssMaxW) {
