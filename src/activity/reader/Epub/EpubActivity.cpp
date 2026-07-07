@@ -49,7 +49,7 @@ namespace {
 /** Encodes spine and page for MenuDrawer::BookmarkNavItem::storageIndex (page < 100000). */
 constexpr int kAnnotationNavPack = 100000;
 
-static std::string chapterTitleForSpine(Epub* epub, int spineIndex) {
+static std::string chapterTitleForSpine(const Epub* epub, int spineIndex) {
   if (!epub) {
     return "";
   }
@@ -290,52 +290,11 @@ bool EpubActivity::buildSection(int spineIndex, const ViewportInfo& info, bool s
     ScreenComponents::fillPopupProgress(renderer, chapterLoadPopup, 12);
   }
 
-  int warmPage = 0;
-  if (spineIndex == currentSpineIndex) {
-    if (section && section->pageCount > 0) {
-      warmPage = section->currentPage;
-    } else if (nextPageNumber != static_cast<int>(UINT16_MAX)) {
-      warmPage = std::max(0, nextPageNumber);
-    }
-  }
-
-  std::function<void(Page&, uint16_t)> prewarmImageCache;
-  if (!skipImages) {
-    prewarmImageCache = [this, &info, warmPage](Page& page, const uint16_t pageIndex) {
-      const int distance = pageIndex > warmPage ? pageIndex - warmPage : warmPage - pageIndex;
-      if (distance > 1 || !page.hasImages()) {
-        return;
-      }
-
-      const int fontId = bookSettings.getReaderFontId();
-      const bool grayEnabled = bookSettings.readerImageGrayscale != 0 && page.anyImageNeedsGrayscale();
-      if (grayEnabled) {
-        const bool highQuality = bookSettings.readerImageGrayscale == SystemSetting::READER_IMAGE_HIGH;
-        renderer.clearScreen(highQuality ? 0xFF : 0x00);
-        renderer.setRenderMode(highQuality ? GfxRenderer::GRAY2_LSB : GfxRenderer::GRAYSCALE_LSB);
-        page.renderImages(renderer, fontId, info.totalMarginLeft, info.totalMarginTop, ImageRenderMode::TwoBit,
-                          highQuality, /*onlyGrayscale=*/true);
-
-        renderer.clearScreen(highQuality ? 0xFF : 0x00);
-        renderer.setRenderMode(highQuality ? GfxRenderer::GRAY2_MSB : GfxRenderer::GRAYSCALE_MSB);
-        page.renderImages(renderer, fontId, info.totalMarginLeft, info.totalMarginTop, ImageRenderMode::TwoBit,
-                          highQuality, /*onlyGrayscale=*/true);
-      } else {
-        renderer.clearScreen(0xFF);
-        renderer.setRenderMode(GfxRenderer::BW);
-        page.renderImages(renderer, fontId, info.totalMarginLeft, info.totalMarginTop, ImageRenderMode::OneBit, false);
-      }
-
-      renderer.setRenderMode(GfxRenderer::BW);
-      renderer.clearScreen(0xFF);
-    };
-  }
-
   bool success = tempSection->createSectionFile(
       info.fontId, FontManager::getNextFont(info.fontId), FontManager::getMaxFontId(info.fontId), info.lineCompression,
       info.wordSpacing, bookSettings.extraParagraphSpacing, bookSettings.paragraphAlignment, info.width, info.height,
       bookSettings.hyphenationEnabled, bookSettings.paragraphCssIndentEnabled != 0,
-      bookSettings.bionicReadingEnabled != 0, nullptr, skipImages, prewarmImageCache);
+      bookSettings.bionicReadingEnabled != 0, nullptr, skipImages, nullptr);
 
   if (useChapterLoadBar) {
     ScreenComponents::fillPopupProgress(renderer, chapterLoadPopup, 100);
@@ -1408,12 +1367,12 @@ void EpubActivity::openPercentSelectionFromMenu() {
     return;
   }
   dismissMenuDrawerForBlockingWork();
-  float bookProgress = 0.0f;
+  float bookProgressPercent = 0.0f;
   if (epub->getBookSize() > 0 && section && section->pageCount > 0) {
     const float chapterProgress = static_cast<float>(section->currentPage) / static_cast<float>(section->pageCount);
-    bookProgress = epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f;
+    bookProgressPercent = epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f;
   }
-  int initialPercent = static_cast<int>(bookProgress + 0.5f);
+  int initialPercent = static_cast<int>(bookProgressPercent + 0.5f);
   if (initialPercent < 0) initialPercent = 0;
   if (initialPercent > 100) initialPercent = 100;
 
@@ -1657,12 +1616,11 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
 
   bool needAnnotationGeometry = annUi_.isActive();
   if (!annUi_.isActive() && !annUi_.annotations().records().empty()) {
-    for (const EpubAnnotationRecord& rec : annUi_.annotations().records()) {
-      if (section && EpubAnnotations::recordTouchesPage(rec, currentSpineIndex, section->currentPage)) {
-        needAnnotationGeometry = true;
-        break;
-      }
-    }
+    needAnnotationGeometry = std::any_of(annUi_.annotations().records().begin(), annUi_.annotations().records().end(),
+                                         [this](const EpubAnnotationRecord& rec) {
+                                           return section && EpubAnnotations::recordTouchesPage(rec, currentSpineIndex,
+                                                                                                section->currentPage);
+                                         });
   }
 
   bool omitStoredWordStrings = false;
@@ -1727,13 +1685,11 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
 
   const bool imagePageWithAA = pageHasImages && textAa;
 
-  const bool highQuality =
-      needsImageGrayscale && bookSettings.readerImageGrayscale == SystemSetting::READER_IMAGE_HIGH;
+  const bool highQuality = needsImageGrayscale && bookSettings.readerImageGrayscale == SystemSetting::READER_IMAGE_HIGH;
   const bool mediumImageGrayscale = needsImageGrayscale && !highQuality;
   const bool needsTextAntiAliasPass = textAa;
 
-  const bool smartRefreshAfterLargeImage =
-      !pageHasImages && lastPageHadImages && lastPageHadLargeImage;
+  const bool smartRefreshAfterLargeImage = !pageHasImages && lastPageHadImages && lastPageHadLargeImage;
   const bool smartRefreshForAaHighQuality = highQuality && needsTextAntiAliasPass;
   if (bookSettings.readerSmartRefreshOnImages && !isBookmarking && !annUi_.isActive() &&
       (smartRefreshAfterLargeImage || smartRefreshForAaHighQuality)) {
@@ -1741,8 +1697,8 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
   }
 
   const bool skipImagesInPageRender = needsImageGrayscale && highQuality;
-  page->render(renderer, fontId, headerFontId, orientedMarginLeft, orientedMarginTop, skipImagesInPageRender,
-               imageMode, /*skipOnlyGrayscaleImages=*/highQuality);
+  page->render(renderer, fontId, headerFontId, orientedMarginLeft, orientedMarginTop, skipImagesInPageRender, imageMode,
+               /*skipOnlyGrayscaleImages=*/highQuality);
 
   renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
   if (isCurrentPageBookmarked()) {
@@ -1753,7 +1709,8 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
     page->renderImages(renderer, fontId, orientedMarginLeft, orientedMarginTop, imageMode);
   }
 
-  const bool bwStored = (skipImagesInPageRender || (needsTextAntiAliasPass && !highQuality)) && renderer.storeBwBuffer();
+  const bool bwStored =
+      (skipImagesInPageRender || (needsTextAntiAliasPass && !highQuality)) && renderer.storeBwBuffer();
   const bool displayWithQualityPass = highQuality && bwStored;
   const bool displayImagePlaceholder = displayWithQualityPass;
   auto displayPageBuffer = [this]() {
@@ -1768,23 +1725,20 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
 
   if (displayImagePlaceholder) {
     page->fillImageRects(renderer, orientedMarginLeft, orientedMarginTop, true, /*onlyGrayscale=*/true);
-    displayPageBuffer();
-  } else if (!displayWithQualityPass) {
-    displayPageBuffer();
-  } else if (pagesUntilFullRefresh <= 1) {
-    pagesUntilFullRefresh = bookSettings.refreshFrequency;
-  } else {
-    pagesUntilFullRefresh--;
   }
+  displayPageBuffer();
 
   if (highQuality && bwStored) {
-    ImageRender::displayGrayscale(renderer, /*quality=*/true, /*preserveText=*/true, [&] {
-      renderer.copyStoredBwToFramebuffer();
-      renderer.invertScreen();
-      page->fillImageRects(renderer, orientedMarginLeft, orientedMarginTop, false, /*onlyGrayscale=*/true);
-      page->renderImages(renderer, fontId, orientedMarginLeft, orientedMarginTop, imageMode, /*quality=*/true,
-                         /*onlyGrayscale=*/true);
-    }, true);
+    ImageRender::displayGrayscale(
+        renderer, /*quality=*/true, /*preserveText=*/true,
+        [&] {
+          renderer.copyStoredBwToFramebuffer();
+          renderer.invertScreen();
+          page->fillImageRects(renderer, orientedMarginLeft, orientedMarginTop, false, /*onlyGrayscale=*/true);
+          page->renderImages(renderer, fontId, orientedMarginLeft, orientedMarginTop, imageMode, /*quality=*/true,
+                             /*onlyGrayscale=*/true);
+        },
+        true);
     if (needsTextAntiAliasPass) {
       const bool textBwStored = renderer.storeBwBuffer();
       if (textBwStored) {
@@ -1802,16 +1756,17 @@ void EpubActivity::renderContents(std::unique_ptr<Page> page, const int oriented
                    ImageRenderMode::OneBit);
     });
   } else if (mediumImageGrayscale || (needsTextAntiAliasPass && bwStored)) {
-    ImageRender::displayGrayscale(renderer, /*quality=*/false, /*preserveText=*/needsTextAntiAliasPass && bwStored, [&] {
-      renderer.clearScreen(0x00);
-      if (needsTextAntiAliasPass && bwStored) {
-        page->render(renderer, fontId, headerFontId, orientedMarginLeft, orientedMarginTop, /*skipImages=*/true,
-                     ImageRenderMode::OneBit);
-      }
-      if (mediumImageGrayscale) {
-        page->renderImages(renderer, fontId, orientedMarginLeft, orientedMarginTop, imageMode);
-      }
-    });
+    ImageRender::displayGrayscale(
+        renderer, /*quality=*/false, /*preserveText=*/needsTextAntiAliasPass && bwStored, [&] {
+          renderer.clearScreen(0x00);
+          if (needsTextAntiAliasPass && bwStored) {
+            page->render(renderer, fontId, headerFontId, orientedMarginLeft, orientedMarginTop, /*skipImages=*/true,
+                         ImageRenderMode::OneBit);
+          }
+          if (mediumImageGrayscale) {
+            page->renderImages(renderer, fontId, orientedMarginLeft, orientedMarginTop, imageMode);
+          }
+        });
 
   } else if (bwStored) {
     renderer.restoreBwBuffer();

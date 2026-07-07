@@ -15,7 +15,6 @@
 #include <new>
 #include <string>
 
-#include "activity/network/CalibreConnectActivity.h"
 #include "activity/browser/OpdsBookBrowserActivity.h"
 #include "activity/OpdsServerListActivity.h"
 #include "activity/network/HotspotActivity.h"
@@ -53,6 +52,7 @@ unsigned long t2 = 0;
 
 void verifyPowerButtonDuration();
 void waitForPowerRelease();
+void normalizeUnavailableClockSettings();
 void enterDeepSleep();
 void onGoToReader(const std::string& path);
 void onSelectBook(const std::string& path);
@@ -77,7 +77,7 @@ void switchTo(Args&&... args) {
     delete currentActivity;
     currentActivity = nullptr;
   }
-  
+
   currentActivity = new T(std::forward<Args>(args)...);
 #ifdef SIMULATOR
   Serial.printf("[%lu] [SIM] Activity: %s\n", millis(), currentActivity->getName());
@@ -151,8 +151,8 @@ void onGoToFileTransfer() {
  * @brief Navigates to the settings activity.
  */
 void onGoToSettings() {
-  switchTo<SettingsActivity>(render, input, onGoToRecent, []() { onGoToLibrary("/"); }, onGoToFileTransfer,
-                             onGoToStatistics);
+  switchTo<SettingsActivity>(
+      render, input, onGoToRecent, []() { onGoToLibrary("/"); }, onGoToFileTransfer, onGoToStatistics);
 }
 
 /**
@@ -196,7 +196,27 @@ void waitForPowerRelease() {
   }
 }
 
+void normalizeUnavailableClockSettings() {
+  if (gpio.deviceIsX3()) {
+    return;
+  }
+
+  bool changed = false;
+  if (SETTINGS.sleepScreen == SystemSetting::DATETIME) {
+    SETTINGS.sleepScreen = SystemSetting::LIGHT;
+    changed = true;
+  }
+  if (SETTINGS.sleepClockRefreshInterval != SystemSetting::CLOCK_REFRESH_OFF) {
+    SETTINGS.sleepClockRefreshInterval = SystemSetting::CLOCK_REFRESH_OFF;
+    changed = true;
+  }
+  if (changed) {
+    SETTINGS.saveToFile();
+  }
+}
+
 void enterDeepSleep() {
+  normalizeUnavailableClockSettings();
   switchTo<SleepActivity>(render, input);
   display.deepSleep();
   gpio.startDeepSleep();
@@ -228,9 +248,7 @@ void setup() {
   }
 
   SETTINGS.loadFromFile();
-#ifndef SIMULATOR
-  display.setSunlightFadeFixEnabled(SETTINGS.fixSunlightFade != 0);
-#endif
+  normalizeUnavailableClockSettings();
 
   switch (gpio.getWakeupReason()) {
     case HalGPIO::WakeupReason::PowerButton:

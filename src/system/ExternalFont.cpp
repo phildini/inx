@@ -2,7 +2,10 @@
 
 #include <Arduino.h>
 #include <Utf8.h>
+
+#include <algorithm>
 #include <cstring>
+#include <iterator>
 #include <new>
 
 ExternalFont::ExternalFont() : m_fontData(nullptr) {}
@@ -131,11 +134,13 @@ bool ExternalFont::load(const char* path) {
 
   metaCacheClear();
   bitmapCacheClear();
-  Serial.printf("[ExternalFont] On-demand glyph table: %u glyphs, mode=%s, aa=%d, meta %u-slot (~%u B), bitmap %u-slot x %u B (~%u B)\n",
-                m_glyphCount, m_fontData->is2Bit ? "2bit" : "1bit", m_hasAntiAliasData ? 1 : 0,
-                static_cast<unsigned>(kGlyphMetaCacheSlots), static_cast<unsigned>(sizeof(m_metaCache)),
-                static_cast<unsigned>(kGlyphBitmapCacheSlots), static_cast<unsigned>(kGlyphBitmapCacheMaxBytes),
-                static_cast<unsigned>(kGlyphBitmapCacheSlots * sizeof(GlyphBitmapCacheSlot)));
+  Serial.printf(
+      "[ExternalFont] On-demand glyph table: %u glyphs, mode=%s, aa=%d, meta %u-slot (~%u B), bitmap %u-slot x %u B "
+      "(~%u B)\n",
+      m_glyphCount, m_fontData->is2Bit ? "2bit" : "1bit", m_hasAntiAliasData ? 1 : 0,
+      static_cast<unsigned>(kGlyphMetaCacheSlots), static_cast<unsigned>(sizeof(m_metaCache)),
+      static_cast<unsigned>(kGlyphBitmapCacheSlots), static_cast<unsigned>(kGlyphBitmapCacheMaxBytes),
+      static_cast<unsigned>(kGlyphBitmapCacheSlots * sizeof(GlyphBitmapCacheSlot)));
   return true;
 }
 
@@ -176,15 +181,19 @@ bool ExternalFont::detectAntiAliasData() {
     return false;
   };
 
-  for (const uint32_t cp : kSampleCodepoints) {
+  const bool sampleHasGray = std::any_of(std::begin(kSampleCodepoints), std::end(kSampleCodepoints), [&](uint32_t cp) {
     EpdGlyph glyph{};
-    if (getGlyphMetadata(cp, glyph) && glyphHasGray(glyph)) {
-      return true;
-    }
+    return getGlyphMetadata(cp, glyph) && glyphHasGray(glyph);
+  });
+  if (sampleHasGray) {
+    return true;
   }
 
   static constexpr uint32_t kMaxFallbackGlyphs = 96;
   const uint32_t limit = m_glyphCount < kMaxFallbackGlyphs ? m_glyphCount : kMaxFallbackGlyphs;
+  // cppcheck-suppress knownConditionTrueFalse ; m_glyphCount is populated by ExternalFont::load() via
+  // m_file.read(&m_glyphCount, 4), an opaque library call cppcheck's ValueFlow can't see through, so it
+  // wrongly assumes m_glyphCount is still its default 0 here.
   for (uint32_t i = 0; i < limit; ++i) {
     uint8_t entry[24];
     EpdGlyph glyph{};
@@ -327,7 +336,6 @@ bool ExternalFont::bitmapCacheCanStore(const uint32_t offset, const uint32_t len
   }
   return true;
 }
-
 
 bool ExternalFont::getGlyphMetadata(uint32_t cp, EpdGlyph& out) {
   if (m_glyphCount == 0) {
