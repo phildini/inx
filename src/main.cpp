@@ -15,8 +15,8 @@
 #include <new>
 #include <string>
 
-#include "activity/browser/OpdsBookBrowserActivity.h"
 #include "activity/OpdsServerListActivity.h"
+#include "activity/browser/OpdsBookBrowserActivity.h"
 #include "activity/network/CalibreConnectActivity.h"
 #include "activity/network/HotspotActivity.h"
 #include "activity/network/LocalNetworkActivity.h"
@@ -30,7 +30,6 @@
 #include "activity/system/SleepActivity.h"
 #include "activity/util/FullScreenMessageActivity.h"
 #include "state/SystemSetting.h"
-#include "system/Battery.h"
 #include "system/FontManager.h"
 #include "system/Fonts.h"
 #include "system/MappedInputManager.h"

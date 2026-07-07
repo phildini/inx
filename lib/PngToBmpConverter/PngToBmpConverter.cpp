@@ -1034,8 +1034,3 @@ bool PngToBmpConverter::pngFileTo1BitThumbnailBmp(FsFile& pngFile, Print& bmpOut
   const int th = targetMaxHeight > 0 ? targetMaxHeight : 340;
   return pngFileTo1BitBmpStreamWithSize(pngFile, bmpOut, tw, th);
 }
-
-void PngToBmpConverter::printPngInfo(uint8_t* pngBuffer, size_t fileSize) {
-  (void)pngBuffer;
-  (void)fileSize;
-}

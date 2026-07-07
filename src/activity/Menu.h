@@ -14,7 +14,6 @@
 #include "images/Stats.h"
 #include "images/Sync.h"
 #include "state/SystemSetting.h"
-#include "system/Battery.h"
 #include "system/Fonts.h"
 #include "system/MappedInputManager.h"
 #include "system/MenuNav.h"

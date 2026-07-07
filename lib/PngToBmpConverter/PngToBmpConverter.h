@@ -30,8 +30,6 @@ class PngToBmpConverter {
   static bool pngFileToThumbnailBmp(FsFile& pngFile, Print& bmpOut, int targetMaxWidth = 0, int targetMaxHeight = 0);
   static bool pngFileTo1BitThumbnailBmp(FsFile& pngFile, Print& bmpOut, int targetMaxWidth = 0,
                                         int targetMaxHeight = 0);
-
-  static void printPngInfo(uint8_t* pngBuffer, size_t fileSize);
 };
 
 #endif
